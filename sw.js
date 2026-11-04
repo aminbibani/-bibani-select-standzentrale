@@ -1,1 +1,7 @@
-const CACHE='bibani-select-shop-v5';const CORE=['./','./index.html','./style.css','./app.js','./icon-192.png','./icon-512.png','./manifest.webmanifest'];self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)).then(()=>self.skipWaiting())));self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(u.origin!==self.location.origin||e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(r=>{if(r.ok){const c=r.clone();caches.open(CACHE).then(cache=>cache.put(e.request,c))}return r}).catch(()=>caches.match(e.request)))});
+
+'use strict';
+self.addEventListener('install',()=>self.skipWaiting());
+self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+// Kein Cache für angemeldete Waren- oder Verkaufsdaten.
+self.addEventListener('push',event=>{let p={};try{p=event.data?.json()||{}}catch{}event.waitUntil(self.registration.showNotification(p.title||'Bibani Select',{body:p.body||'Neue Mitteilung in deiner Standzentrale.',icon:new URL('icon-192.png',self.registration.scope).href,tag:p.tag||'bibani',data:{url:self.registration.scope}}))});
+self.addEventListener('notificationclick',event=>{event.notification.close();event.waitUntil((async()=>{const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});const c=clients.find(c=>c.url.startsWith(self.registration.scope));if(c)return c.focus();return self.clients.openWindow(self.registration.scope)})())});
