@@ -1,0 +1,88 @@
+const SHOP='https://bibaniselect.com';
+const grid=document.getElementById('productGrid'),note=document.getElementById('productNote');
+const read=(key)=>{try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}};
+let products=[],wishes=read('bibani-wishes'),cart=read('bibani-cart-v2'),active='all',search='';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money=n=>Number(n||0).toLocaleString('de-DE',{style:'currency',currency:'EUR'});
+const img=p=>p.images?.[0]?.src||p.image?.src||'';
+const categories={all:'Alle Produkte',armbaender:'Armbänder',ohrringe:'Ohrringe',ketten:'Ketten',ringe:'Ringe',uhren:'Uhren',handy:'Handyzubehör',accessoires:'Accessoires'};
+function category(p){
+ const t=[p.title,p.product_type,Array.isArray(p.tags)?p.tags.join(' '):p.tags||''].join(' ').toLowerCase();
+ // Reihenfolge ist wichtig: Ohr- und Armschmuck dürfen nicht als allgemeine Ketten gelten.
+ if(/ohrring|ohrstecker|creolen|earrings?|ear studs|hoops/.test(t))return 'ohrringe';
+ if(/armband|armreif|bracelet|bangle/.test(t))return 'armbaender';
+ if(/halskette|collier|necklace|anhänger|pendant|kette/.test(t))return 'ketten';
+ if(/\bring\b|\bringe\b|fingerring/.test(t))return 'ringe';
+ if(/uhr|watch/.test(t))return 'uhren';
+ if(/iphone|hülle|case|mag.?safe|usb|lade|charger|schutzglas|kabel|handy|adapter|protector/.test(t))return 'handy';
+ return 'accessoires';
+}
+
+const categoryOrder=['armbaender','ohrringe','ketten','ringe','uhren','handy','accessoires'];
+const fallbackImage='https://cdn.shopify.com/s/files/1/1087/8353/4410/files/FA32729E-AB44-4AB9-81B8-906F0E73C906.png?v=1792929312';
+function setCategory(cat){active=cat;search='';render();document.getElementById('productGrid').scrollIntoView({behavior:'smooth',block:'start'})}
+function renderCategoryGallery(){
+ const holder=document.getElementById('categoryGallery');
+ if(!holder)return;
+ holder.innerHTML=categoryOrder.map(c=>{
+  const matches=products.filter(p=>category(p)===c);
+  const photo=matches.map(img).find(Boolean);
+  return `<button class="category-tile" data-gallery="${c}" aria-label="${esc(categories[c])} anzeigen"><div class="tile-photo">${photo?`<img src="${esc(photo)}" loading="lazy" alt="">`:`<span class="tile-placeholder">✦</span>`}</div><div class="tile-caption"><strong>${esc(categories[c])}</strong><small>${matches.length} Produkte →</small></div></button>`;
+ }).join('');
+ holder.querySelectorAll('[data-gallery]').forEach(b=>b.onclick=()=>setCategory(b.dataset.gallery));
+ const featured=document.getElementById('featuredStrip');
+ if(featured)featured.innerHTML=products.slice(0,4).map(p=>`<button class="feature-card" data-feature="${p.id}">${img(p)?`<img src="${esc(img(p))}" loading="lazy" alt="">`:''}<span>${esc(p.title)}</span><b>${money(p.variants?.[0]?.price)}</b></button>`).join('');
+ featured?.querySelectorAll('[data-feature]').forEach(b=>b.onclick=()=>details(b.dataset.feature));
+}
+
+function save(){localStorage.setItem('bibani-cart-v2',JSON.stringify(cart));localStorage.setItem('bibani-wishes',JSON.stringify(wishes));document.getElementById('cartCount').textContent=cart.reduce((n,x)=>n+x.qty,0);document.getElementById('wishCount').textContent=wishes.length}
+function filtered(){return products.filter(p=>(active==='all'||category(p)===active)&&[p.title,p.product_type,Array.isArray(p.tags)?p.tags.join(' '):p.tags||''].join(' ').toLowerCase().includes(search))}
+function render(){document.getElementById('productCount').textContent=products.length+' Produkte geladen';document.getElementById('categoryTitle').textContent=categories[active]+(search?' · Suche: '+search:'');document.querySelectorAll('[data-cat]').forEach(b=>b.classList.toggle('active',b.dataset.cat===active));const shown=filtered();grid.innerHTML=shown.length?shown.map(p=>{const v=p.variants?.[0],image=img(p);return `<article class="product">${image?`<img src="${esc(image)}" loading="lazy" alt="${esc(p.title)}">`:''}<div class="product-body"><h3>${esc(p.title)}</h3><div class="price">${money(v?.price)}</div><div class="product-actions"><button data-detail="${p.id}">Ansehen</button><button data-add="${p.id}" ${!v?.available&&v?.available!==undefined?'disabled':''}>In den Warenkorb +</button><button class="heart" data-wish="${p.id}" aria-label="Merken">${wishes.includes(String(p.id))?'♥':'♡'}</button></div></div></article>`}).join(''):'<div class="notice">Hier sind derzeit keine Produkte sichtbar. Schau auch in unserem <a href="'+SHOP+'" target="_blank" rel="noopener">Shopify-Shop</a> vorbei.</div>';grid.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add));grid.querySelectorAll('[data-detail]').forEach(b=>b.onclick=()=>details(b.dataset.detail));grid.querySelectorAll('[data-wish]').forEach(b=>b.onclick=()=>{let id=b.dataset.wish;wishes=wishes.includes(id)?wishes.filter(x=>x!==id):[...wishes,id];save();render()})}
+function add(id,variantId){const p=products.find(x=>String(x.id)===String(id));const v=p?.variants?.find(x=>String(x.id)===String(variantId))||p?.variants?.[0];if(!v?.id){alert('Bitte Produkt direkt im Shopify-Shop auswählen.');return}let x=cart.find(x=>String(x.variantId)===String(v.id));if(x)x.qty++;else cart.push({variantId:String(v.id),title:p.title,variant:v.title,price:Number(v.price||0),image:img(p),qty:1});save();renderCart();document.getElementById('productDialog').close();document.getElementById('cartDialog').showModal()}
+function details(id){let p=products.find(x=>String(x.id)===String(id));if(!p)return;const variants=p.variants||[];document.getElementById('productDetail').innerHTML=`${img(p)?`<img class="detail-img" src="${esc(img(p))}" alt="${esc(p.title)}">`:''}<h3>${esc(p.title)}</h3><p>${esc((p.body_html||'').replace(/<[^>]*>/g,' ').slice(0,600))}</p><label>Variante <select id="variantSelect">${variants.map(v=>`<option value="${v.id}">${esc(v.title)} – ${money(v.price)}</option>`).join('')}</select></label><p><button class="primary" id="detailAdd">In den Warenkorb +</button></p>`;document.getElementById('detailAdd').onclick=()=>add(id,document.getElementById('variantSelect').value);document.getElementById('productDialog').showModal()}
+function renderCart(){const el=document.getElementById('cartItems');el.innerHTML=cart.length?cart.map((x,i)=>`<div class="cartrow">${x.image?`<img src="${esc(x.image)}" alt="">`:''}<div><b>${esc(x.title)}</b><small>${esc(x.variant==='Default Title'?'':x.variant)}</small><p>${money(x.price)} × ${x.qty}</p><button data-minus="${i}">−</button> <button data-plus="${i}">+</button> <button data-remove="${i}">Entfernen</button></div></div>`).join(''):'Dein Warenkorb ist noch leer.';document.getElementById('cartTotal').textContent='Zwischensumme: '+money(cart.reduce((n,x)=>n+x.price*x.qty,0));document.getElementById('checkoutBtn').disabled=!cart.length;el.querySelectorAll('[data-minus]').forEach(b=>b.onclick=()=>{let x=cart[+b.dataset.minus];x.qty--;if(!x.qty)cart.splice(+b.dataset.minus,1);save();renderCart()});el.querySelectorAll('[data-plus]').forEach(b=>b.onclick=()=>{cart[+b.dataset.plus].qty++;save();renderCart()});el.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{cart.splice(+b.dataset.remove,1);save();renderCart()})}
+function checkout(){if(!cart.length)return;const items=cart.map(x=>x.variantId+':'+x.qty).join(',');window.location.href=SHOP+'/cart/'+items;}
+async function load(){try{let res=await fetch(SHOP+'/products.json?limit=250',{mode:'cors',cache:'no-store'});if(!res.ok)throw Error('Products endpoint');let data=await res.json();products=(data.products||[]).filter(p=>p.handle&&p.variants?.length);if(!products.length)throw Error('No products');renderCategoryGallery();
+ const hero=document.getElementById('heroProductImage');
+ const jewelry=products.find(p=>['ketten','armbaender','ohrringe'].includes(category(p))&&img(p));
+ if(hero&&jewelry){hero.src=img(jewelry);hero.alt=jewelry.title;}
+ note.textContent='Produkte aus Shopify. Verfügbarkeit und endgültiger Preis werden bei Shopify bestätigt.';render()}catch(e){grid.innerHTML='<div class="notice">Die Produktanzeige konnte gerade nicht geladen werden. <a href="'+SHOP+'" target="_blank" rel="noopener">Produkte im Shopify-Shop ansehen ↗</a></div>';note.textContent='Falls Shopify den direkten Produktabruf blockiert, benötigen wir eine Storefront-API-Anbindung. Der Warenkorb funktioniert nur für hier geladene Produkte.'}}
+document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{active=b.dataset.cat;search='';render();document.getElementById('productGrid').scrollIntoView({behavior:'smooth',block:'start'})});document.getElementById('cartBtn').onclick=()=>{renderCart();document.getElementById('cartDialog').showModal()};document.getElementById('checkoutBtn').onclick=checkout;document.getElementById('searchBtn').onclick=()=>document.getElementById('searchDialog').showModal();document.getElementById('searchForm').onsubmit=e=>{e.preventDefault();search=document.getElementById('searchInput').value.trim().toLowerCase();active='all';document.getElementById('searchDialog').close();render();document.getElementById('kollektion').scrollIntoView({behavior:'smooth'})};document.getElementById('wishBtn').onclick=()=>{let selected=products.filter(p=>wishes.includes(String(p.id)));document.getElementById('wishItems').innerHTML=selected.length?selected.map(p=>`<div class="wishrow"><span>${esc(p.title)}</span><button data-id="${p.id}">Zum Warenkorb +</button></div>`).join(''):'Noch keine Produkte gemerkt.';document.querySelectorAll('#wishItems [data-id]').forEach(b=>b.onclick=()=>{add(b.dataset.id);document.getElementById('wishDialog').close()});document.getElementById('wishDialog').showModal()};save();load();if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+
+/* V5: mobile-first luxury editorial redesign */
+html{scroll-behavior:smooth;scroll-padding-top:90px}
+body{overflow-x:hidden}
+.hero-v5{position:relative!important;display:flex!important;flex-direction:column!important;min-height:0!important;padding:0!important;gap:0!important;align-items:stretch!important;background:#11100d!important}
+.hero-v5 .hero-art{order:0!important;position:relative!important;width:100%!important;min-height:0!important;height:clamp(260px,55vw,540px)!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;overflow:hidden!important}
+.hero-v5 .hero-art img{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;filter:brightness(.87)!important}
+.hero-v5 .hero-art:after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,#11100d 0%,transparent 50%);pointer-events:none}
+.hero-v5 .hero-art span{z-index:1!important;bottom:18px!important;left:22px!important;background:#11100dbd!important;font-size:10px!important;letter-spacing:.17em!important;color:#e7c784!important}
+.hero-v5 .hero-copy{order:1!important;position:relative!important;max-width:780px!important;width:100%!important;padding:12px 24px 36px!important;margin:0 auto!important;transform:none!important;text-align:left!important}
+.hero-v5 .hero-copy .eyebrow{margin:0 0 16px!important;color:#e6c580!important;letter-spacing:.2em!important}
+.hero-v5 h1{font-size:clamp(39px,7vw,72px)!important;line-height:1.13!important;margin:0 0 18px!important;letter-spacing:-.03em!important}
+.hero-v5 h1 em{color:#e3bd74!important}
+.hero-v5 .sub{margin:0 0 24px!important;max-width:500px!important;line-height:1.55!important}
+.hero-v5 .primary{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:25px!important;border-radius:9px!important;padding:16px 25px!important;background:#d8b778!important;color:#17130d!important;min-height:52px!important;text-decoration:none!important}
+.hero-v5 .hero-trust{margin-top:24px!important;font-size:12px!important;line-height:1.6!important}
+.category-gallery-v5{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+.category-gallery-v5 .category-tile{border-radius:14px!important;border:1px solid #715c37!important;background:#1c1a16!important;overflow:hidden!important}
+.category-gallery-v5 .tile-photo{aspect-ratio:1.15!important}
+.category-gallery-v5 .tile-photo img{object-fit:cover!important}
+.category-gallery-v5 .tile-caption{min-height:54px!important;padding:12px!important;align-items:center!important}
+.category-gallery-v5 .tile-caption strong{font-size:14px!important}
+.category-gallery-v5 .tile-caption small{font-size:11px!important}
+.collection,.products{scroll-margin-top:95px}
+.mobile-bottom-v5{z-index:100!important;bottom:0!important;padding-bottom:max(10px,env(safe-area-inset-bottom))!important;background:#13120fee!important;backdrop-filter:blur(14px)!important}
+main{padding-bottom:100px!important}
+@media(max-width:700px){
+.topline{display:none!important}
+header{position:relative!important;min-height:68px!important}
+.hero-v5 .hero-art{height:290px!important}
+.hero-v5 .hero-copy{padding:12px 20px 35px!important}
+.hero-v5 h1{font-size:clamp(35px,9vw,48px)!important}
+.hero-v5 .hero-trust{font-size:11px!important}
+.benefits{padding:14px 10px!important;gap:12px!important}
+.collection,.products{padding-left:18px!important;padding-right:18px!important}
+.category-gallery-v5{margin:20px 0 25px!important}
+.mobile-bottom-v5{min-height:65px!important}
+}
