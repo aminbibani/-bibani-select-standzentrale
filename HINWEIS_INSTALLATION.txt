@@ -1,0 +1,8 @@
+Bibani Select Standzentrale – Gesamtpaket
+
+Dieses ZIP enthält das vollständige Projekt sowie die zusammengeführten Änderungen.
+- Push-Aufruf: apikey-Header ergänzt.
+- Doppelt eingefügtes großes Header-Logo entfernt; das originale kleine Logo in index.html und die iPhone-Startbildschirm-Icons bleiben unverändert.
+- Push- und übrige App-Funktionen aus bibani-update.js bleiben enthalten.
+
+Für GitHub: ZIP entpacken und den Inhalt des Projektordners in das Repository übernehmen. Nicht nur einzelne Dateien hochladen. Supabase-Edge-Function und VAPID-Secrets müssen separat korrekt eingerichtet sein; dieses Paket allein beweist noch keine erfolgreiche Push-Zustellung.
