@@ -1,0 +1,10 @@
+BIBANI SELECT – KASSENFEHLER market_id
+
+1. Supabase öffnen -> SQL Editor -> New query.
+2. Inhalt der Datei SUPABASE_REPARATUR.sql einfügen und Run drücken.
+3. Die Dateien der ZIP in den GitHub-Repository-Hauptordner hochladen, vorhandene Dateien ersetzen.
+4. Standzentrale neu laden und Verkauf testen.
+
+ACHTUNG: Falls bs_sales.market_id bereits mit einem anderen Datentyp existiert, wird die SQL-Datei ihn nicht ändern. Falls danach ein anderer Feldfehler erscheint, ist die Supabase-Tabelle nicht vollständig mit der App synchronisiert. Bitte die neue Fehlermeldung mitteilen.
+
+Vor einem erneuten Verkauf bitte unter Abrechnung prüfen, ob der vorherige Versuch bereits erfasst wurde.
