@@ -1,0 +1,1 @@
+Alle Dateien in den GitHub-Repository-Hauptordner hochladen. index.html ersetzen. In Schnellkasse: Artikel mit vorhandenem Bestand freischalten; bei 0 Bestand pro Artikel über Bestand eintragen die tatsächlich vorhandene Menge setzen. Zubehör bei Bedarf über den Zubehör-Button ergänzen.\n
