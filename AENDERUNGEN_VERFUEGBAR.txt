@@ -1,0 +1,1 @@
+Schnellkasse: Schaltfläche zur bestätigten Freigabe aller Artikel mit positivem Lagerbestand. Zubehör ergänzen: MagSafe-Halterung und Panzerfolien, falls nicht vorhanden. Neue Artikel starten mit Bestand 0; Bestände werden nicht erfunden. Bestehende Daten und Funktionen bleiben erhalten.
